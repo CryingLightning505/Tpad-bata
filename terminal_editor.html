@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto Mono', monospace;
+        }
+        /* Custom scrollbar for a more integrated look */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background-color: #000000; /* Jet black track */
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #3f6212; /* Darker green thumb */
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body class="bg-black text-lime-400 p-4 flex flex-col items-center justify-start min-h-screen">
+
+    <!-- Message Box for alerts -->
+    <div id="message-box" class="fixed top-4 bg-gray-900 text-lime-400 px-4 py-2 rounded-lg shadow-lg hidden z-50">
+    </div>
+    
+    <!-- This hidden input is used to trigger the file open dialog -->
+    <input type="file" id="file-input" class="hidden" accept=".txt">
+
+    <div class="w-full max-w-4xl h-[85vh] bg-gray-900 rounded-lg shadow-xl overflow-hidden flex flex-col border border-lime-400">
+        <!-- Header bar with "File" tab and "file name" -->
+        <div class="flex-shrink-0 flex items-center justify-between p-2 bg-gray-900 rounded-t-lg border-b border-lime-400">
+            <!-- File Menu -->
+            <div class="relative inline-block text-left">
+                <button id="file-menu-btn" type="button" class="inline-flex justify-center w-full px-4 py-1 text-sm font-medium text-lime-400 bg-gray-900 rounded-md hover:bg-gray-800 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-lime-500">
+                    File
+                </button>
+                <div id="file-dropdown" class="origin-top-left absolute left-0 mt-2 w-40 rounded-md shadow-lg bg-gray-800 ring-1 ring-lime-500 ring-opacity-5 focus:outline-none hidden transition-all duration-200 ease-in-out">
+                    <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
+                        <button id="menu-save-btn" class="block w-full text-left px-4 py-2 text-sm text-lime-400 hover:bg-gray-700 transition-colors duration-200" role="menuitem">
+                            Save
+                        </button>
+                        <button id="menu-open-btn" class="block w-full text-left px-4 py-2 text-sm text-lime-400 hover:bg-gray-700 transition-colors duration-200" role="menuitem">
+                            Open
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <span id="file-name" class="text-sm font-bold text-lime-300 mr-4">untitled.txt</span>
+        </div>
+
+        <!-- The main text area -->
+        <textarea id="editor" class="flex-grow p-4 text-lime-400 bg-black caret-lime-400 focus:outline-none resize-none leading-relaxed text-sm"></textarea>
+    </div>
+
+    <script>
+        // DOM elements
+        const editor = document.getElementById('editor');
+        const fileMenuBtn = document.getElementById('file-menu-btn');
+        const fileDropdown = document.getElementById('file-dropdown');
+        const menuSaveBtn = document.getElementById('menu-save-btn');
+        const menuOpenBtn = document.getElementById('menu-open-btn');
+        const fileInput = document.getElementById('file-input');
+        const fileNameSpan = document.getElementById('file-name');
+        const messageBox = document.getElementById('message-box');
+        
+        // State
+        let currentFileName = 'untitled.txt';
+
+        // Function to show a temporary message
+        function showMessage(text) {
+            messageBox.textContent = text;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Save functionality
+        function saveFile() {
+            const content = editor.value;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage(`File "${currentFileName}" saved!`);
+        }
+
+        // Open functionality
+        function openFile() {
+            fileInput.click();
+        }
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                editor.value = e.target.result;
+                currentFileName = file.name;
+                fileNameSpan.textContent = currentFileName;
+                showMessage(`File "${currentFileName}" opened successfully.`);
+            };
+            reader.readAsText(file);
+        });
+
+        // Event listeners for menu and buttons
+        fileMenuBtn.addEventListener('click', (event) => {
+            fileDropdown.classList.toggle('hidden');
+            event.stopPropagation(); // Prevent the document click from immediately closing it
+        });
+
+        menuSaveBtn.addEventListener('click', () => {
+            saveFile();
+            fileDropdown.classList.add('hidden');
+        });
+
+        menuOpenBtn.addEventListener('click', () => {
+            openFile();
+            fileDropdown.classList.add('hidden');
+        });
+
+        // Close the dropdown when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!fileMenuBtn.contains(event.target) && !fileDropdown.contains(event.target)) {
+                fileDropdown.classList.add('hidden');
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            // Check for Ctrl + S (or Cmd + S on Mac) to save
+            if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+                event.preventDefault();
+                saveFile();
+            }
+            // Check for Ctrl + O (or Cmd + O on Mac) to open
+            if ((event.ctrlKey || event.metaKey) && event.key === 'o') {
+                event.preventDefault();
+                openFile();
+            }
+        });
+
+        // Initial focus on the editor
+        editor.focus();
+
+    </script>
+</body>
+</html>
